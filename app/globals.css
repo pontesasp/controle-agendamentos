@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ======== FUNDO GLOBAL NEON PREMIUM ======== */
+body {
+  background: radial-gradient(circle at 20% 0%, #0b1120, #050505 70%);
+  color: #fff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+/* ======== SUAVIZAÇÃO ======== */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+    🔶 INPUT PADRÃO KARIMEX — DARK + NEON
+   ============================================================ */
+.kx-input,
+.input-kx {
+  background-color: #0b0f1a;           /* fundo dark */
+  border: 1px solid rgba(255, 120, 20, 0.4);
+  color: #ffffff !important;          /* texto sempre visível */
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.kx-input::placeholder,
+.input-kx::placeholder {
+  color: rgba(200, 200, 200, 0.45);
+}
+
+.kx-input:focus,
+.input-kx:focus {
+  border-color: rgba(255, 120, 20, 0.9);
+  box-shadow: 0 0 10px rgba(255, 120, 20, 0.6);
+  background-color: #0d121f;
+}
+
+/* ============================================================
+    🔶 BOTÕES KARIMEX
+   ============================================================ */
+.kx-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  background-color: #0d1117;
+  color: white;
+  border: 1px solid rgba(255, 120, 20, 0.7);
+  box-shadow: 0 0 8px rgba(255, 120, 20, 0.4);
+  transition: 0.2s;
+}
+
+.kx-btn:hover {
+  background-color: rgba(255, 120, 20, 0.15);
+  box-shadow: 0 0 14px rgba(255, 120, 20, 1);
+  transform: translateY(-1px);
+}
+
+.kx-btn-active {
+  background-color: rgba(255, 120, 20, 0.35);
+  box-shadow: 0 0 18px rgba(255, 120, 20, 1);
+  border-color: orange;
+  color: black;
+  font-weight: bold;
+}
+
+/* 🔴 Botões de perigo (excluir) */
+.kx-btn-danger {
+  padding: 8px 14px;
+  border-radius: 6px;
+  background-color: #3b0b0b;
+  color: white;
+  border: 1px solid rgba(255, 60, 60, 0.7);
+  box-shadow: 0 0 8px rgba(255, 50, 50, 0.4);
+  transition: 0.2s;
+}
+
+.kx-btn-danger:hover {
+  background-color: rgba(255, 60, 60, 0.2);
+  box-shadow: 0 0 14px rgba(255, 50, 50, 1);
+}
+
+.kx-btn-danger-active {
+  background-color: rgba(255, 70, 70, 0.4);
+  box-shadow: 0 0 18px rgba(255, 50, 50, 1);
+  border-color: red;
+  font-weight: bold;
+}

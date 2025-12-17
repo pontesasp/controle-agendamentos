@@ -1,0 +1,49 @@
+:root {
+  --bg-primary: #05070d;
+  --bg-secondary: #0b0e18;
+  --bg-tertiary: #111624;
+
+  --card-bg: rgba(15, 20, 32, 0.55);
+  --card-border: rgba(255, 125, 35, 0.25);
+
+  --neon-orange: #ff7b00;
+  --neon-orange-glow: 0 0 10px rgba(255, 120, 20, 0.7);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a7b4cf;
+}
+
+.main-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 50px;
+}
+
+.page-area {
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 0;
+}
+
+.kx-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--neon-orange-glow);
+  backdrop-filter: blur(10px);
+  transition: 0.25s ease;
+}
+
+.kx-card:hover {
+  border-color: var(--neon-orange);
+  box-shadow: 0 0 22px rgba(255, 120, 20, 0.7);
+}
