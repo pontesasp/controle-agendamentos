@@ -94,45 +94,43 @@ export default function CalendarioPage() {
   /* ===================== EVENTOS ===================== */
 
   function gerarEventos(lista: Remessa[]) {
-  const evts: EventoCalendario[] = [];
+    const evts: EventoCalendario[] = [];
 
-  lista.forEach((r) => {
-    const cancelada = r.status === "cancelada";
-    const finalizado =
-      r.status === "entregue" || r.status === "carregada";
+    lista.forEach((r) => {
+      const cancelada = r.status === "cancelada";
+      const finalizado = r.status === "entregue" || r.status === "carregada";
 
-    if (r.data_carregamento) {
-      evts.push({
-        id: r.id + "-carregamento",
-        tipo: "carregamento",
-        data: r.data_carregamento,
-        titulo: `Carregamento - ${r.cliente_nome}`,
-        descricao: `Remessa ${r.numero_remessa}, Nota ${r.numero_nota}\nTransportadora: ${
-          r.transportadora || "Não definida"
-        }`,
-        cancelado: cancelada,
-        finalizado: finalizado, // 👈 AQUI
-      });
-    }
+      if (r.data_carregamento) {
+        evts.push({
+          id: r.id + "-carregamento",
+          tipo: "carregamento",
+          data: r.data_carregamento,
+          titulo: `Carregamento - ${r.cliente_nome}`,
+          descricao: `Remessa ${r.numero_remessa}, Nota ${r.numero_nota}\nTransportadora: ${
+            r.transportadora || "Não definida"
+          }`,
+          cancelado: cancelada,
+          finalizado: finalizado,
+        });
+      }
 
-    if (r.data_entrega) {
-      evts.push({
-        id: r.id + "-entrega",
-        tipo: "entrega",
-        data: r.data_entrega,
-        titulo: `Entrega - ${r.cliente_nome}`,
-        descricao: `Remessa ${r.numero_remessa}, Nota ${r.numero_nota}\nTransportadora: ${
-          r.transportadora || "Não definida"
-        }`,
-        cancelado: cancelada,
-        finalizado: finalizado, // 👈 AQUI
-      });
-    }
-  });
+      if (r.data_entrega) {
+        evts.push({
+          id: r.id + "-entrega",
+          tipo: "entrega",
+          data: r.data_entrega,
+          titulo: `Entrega - ${r.cliente_nome}`,
+          descricao: `Remessa ${r.numero_remessa}, Nota ${r.numero_nota}\nTransportadora: ${
+            r.transportadora || "Não definida"
+          }`,
+          cancelado: cancelada,
+          finalizado: finalizado,
+        });
+      }
+    });
 
-  setEventos(evts);
-}
-
+    setEventos(evts);
+  }
 
   /* ===================== 🤖 INTELIGÊNCIA ===================== */
 
@@ -166,15 +164,19 @@ export default function CalendarioPage() {
       notificar(msg);
     }
 
+    // ✅ Ajuste: incluir número da nota
     atrasadas.forEach((r) => {
-      const msg = `Entrega da remessa ${r.numero_remessa} está atrasada.`;
+      const nota = r.numero_nota ? ` (Nota ${r.numero_nota})` : "";
+      const msg = `Entrega da remessa ${r.numero_remessa}${nota} está atrasada.`;
       alertas.push({ id: r.id + "-atraso", tipo: "atraso", mensagem: msg });
       notificar(msg);
     });
 
+    // ✅ Ajuste: incluir número da nota
     lista.forEach((r) => {
       if (r.status === "entregue" || r.status === "carregada") {
-        const msg = `Remessa ${r.numero_remessa} foi marcada como ${r.status.toUpperCase()}.`;
+        const nota = r.numero_nota ? ` (Nota ${r.numero_nota})` : "";
+        const msg = `Remessa ${r.numero_remessa}${nota} foi marcada como ${r.status.toUpperCase()}.`;
         alertas.push({ id: r.id + "-status", tipo: "sucesso", mensagem: msg });
         notificar(msg);
       }
