@@ -71,6 +71,19 @@ function actionBtnClass(done: boolean, pending: boolean) {
   return "kx-btn";
 }
 
+function isoToDatetimeLocal(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
 // ------------------------- COMPONENTE PRINCIPAL -------------------------
 export default function AgendamentosPage() {
   const [numeroRemessa, setNumeroRemessa] = useState("");
@@ -93,14 +106,12 @@ export default function AgendamentosPage() {
   const [novaRemessa, setNovaRemessa] = useState("");
   const [novaNota, setNovaNota] = useState("");
 
-  const [listaTransportadoras, setListaTransportadoras] = useState<{ id: string; nome: string }[]>(
-    []
-  );
+  const [listaTransportadoras, setListaTransportadoras] = useState<{ id: string; nome: string }[]>([]);
   const [transportadoraSelecionadaId, setTransportadoraSelecionadaId] = useState("");
 
   const [tipoCarregamento, setTipoCarregamento] = useState<"PALETIZADA" | "BATIDA" | "">("");
 
-  // ✅ NOVO: campos de edição
+  // ✅ campos de edição
   const [editNumeroRemessa, setEditNumeroRemessa] = useState("");
   const [editNumeroNota, setEditNumeroNota] = useState("");
   const [editClienteNome, setEditClienteNome] = useState("");
@@ -131,9 +142,7 @@ export default function AgendamentosPage() {
       const { data, error } = await supabase.from("remessas").select("*").order("data_criacao", {
         ascending: false,
       });
-
       if (error) throw error;
-
       setRemessas((data || []) as Remessa[]);
     } catch (e) {
       console.error(e);
@@ -173,7 +182,6 @@ export default function AgendamentosPage() {
       descricao,
       usuario,
     });
-
     if (error) console.error(error);
   }
 
@@ -194,9 +202,13 @@ export default function AgendamentosPage() {
 
     resetCamposAcao();
 
+    // já pré-carrega inputs com o que existe no banco (se tiver)
+    setDataEntrega(isoToDatetimeLocal(remessa.data_entrega));
+    setDataCarregamento(isoToDatetimeLocal(remessa.data_carregamento));
+
     setTipoCarregamento((remessa.tipo_carregamento as any) || "");
 
-    // ✅ preparar campos de edição
+    // preparar campos de edição
     setEditNumeroRemessa(remessa.numero_remessa || "");
     setEditNumeroNota(remessa.numero_nota || "");
     setEditClienteNome(remessa.cliente_nome || "");
@@ -214,7 +226,6 @@ export default function AgendamentosPage() {
     setHistorico([]);
     resetCamposAcao();
     setTipoCarregamento("");
-
     setEditNumeroRemessa("");
     setEditNumeroNota("");
     setEditClienteNome("");
@@ -240,7 +251,6 @@ export default function AgendamentosPage() {
           numero_nota: numeroNota,
           cliente_nome: clienteNome,
           status: "aguardando_agendamento",
-
           etiqueta_criada: false,
           etiqueta_recebida: false,
           tipo_carregamento: null,
@@ -265,7 +275,7 @@ export default function AgendamentosPage() {
     }
   }
 
-  // ------------------------- ✅ NOVO: EDITAR REMESSA -------------------------
+  // ------------------------- EDITAR REMESSA -------------------------
   async function handleSalvarEdicaoRemessa() {
     if (!remessaSelecionada) return;
 
@@ -282,7 +292,6 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
-      // monta descrição do que mudou
       const changes: string[] = [];
       if (nr !== remessaSelecionada.numero_remessa) changes.push(`Remessa: ${remessaSelecionada.numero_remessa} → ${nr}`);
       if (nn !== remessaSelecionada.numero_nota) changes.push(`Nota: ${remessaSelecionada.numero_nota} → ${nn}`);
@@ -307,7 +316,6 @@ export default function AgendamentosPage() {
 
       await buscarRemessas();
 
-      // atualiza remessa selecionada
       setRemessaSelecionada({
         ...remessaSelecionada,
         numero_remessa: nr,
@@ -325,7 +333,7 @@ export default function AgendamentosPage() {
     }
   }
 
-  // ------------------------- AÇÕES EXISTENTES -------------------------
+  // ------------------------- AÇÕES -------------------------
   async function handleAgendarEntrega() {
     if (!remessaSelecionada || !dataEntrega) return;
 
@@ -333,10 +341,12 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
+      const dt = new Date(dataEntrega);
+
       const { error } = await supabase
         .from("remessas")
         .update({
-          data_entrega: new Date(dataEntrega),
+          data_entrega: dt,
           status: "agendada",
         })
         .eq("id", remessaSelecionada.id);
@@ -346,7 +356,12 @@ export default function AgendamentosPage() {
       await registrarHistorico(remessaSelecionada.id, "agendada", `Entrega agendada para ${dataEntrega}`);
 
       await buscarRemessas();
-      setRemessaSelecionada({ ...remessaSelecionada, data_entrega: new Date(dataEntrega).toISOString(), status: "agendada" });
+      setRemessaSelecionada({
+        ...remessaSelecionada,
+        data_entrega: dt.toISOString(),
+        status: "agendada",
+      });
+
       await carregarHistorico(remessaSelecionada.id);
       setPanelMode("idle");
     } catch (e) {
@@ -364,10 +379,12 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
+      const dt = new Date(dataCarregamento);
+
       const { error } = await supabase
         .from("remessas")
         .update({
-          data_carregamento: new Date(dataCarregamento),
+          data_carregamento: dt,
         })
         .eq("id", remessaSelecionada.id);
 
@@ -376,7 +393,11 @@ export default function AgendamentosPage() {
       await registrarHistorico(remessaSelecionada.id, "carregamento_agendado", `Carregamento agendado para ${dataCarregamento}`);
 
       await buscarRemessas();
-      setRemessaSelecionada({ ...remessaSelecionada, data_carregamento: new Date(dataCarregamento).toISOString() });
+      setRemessaSelecionada({
+        ...remessaSelecionada,
+        data_carregamento: dt.toISOString(),
+      });
+
       await carregarHistorico(remessaSelecionada.id);
       setPanelMode("idle");
     } catch (e) {
@@ -447,7 +468,11 @@ export default function AgendamentosPage() {
       await registrarHistorico(remessaSelecionada.id, "cancelada", `Cancelada. Motivo: ${motivoCancelamento}`);
 
       await buscarRemessas();
-      setRemessaSelecionada({ ...remessaSelecionada, status: "cancelada", observacoes: motivoCancelamento });
+      setRemessaSelecionada({
+        ...remessaSelecionada,
+        status: "cancelada",
+        observacoes: motivoCancelamento,
+      });
 
       await carregarHistorico(remessaSelecionada.id);
       setPanelMode("idle");
@@ -466,7 +491,10 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
-      const { error: e1 } = await supabase.from("remessas").update({ status: "refaturada" }).eq("id", remessaSelecionada.id);
+      const { error: e1 } = await supabase
+        .from("remessas")
+        .update({ status: "refaturada" })
+        .eq("id", remessaSelecionada.id);
       if (e1) throw e1;
 
       const { data: nova, error: e2 } = await supabase
@@ -511,9 +539,14 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
-      const nomeTransportadora = listaTransportadoras.find((t) => t.id === transportadoraSelecionadaId)?.nome || null;
+      const nomeTransportadora =
+        listaTransportadoras.find((t) => t.id === transportadoraSelecionadaId)?.nome || null;
 
-      const { error } = await supabase.from("remessas").update({ transportadora: nomeTransportadora }).eq("id", remessaSelecionada.id);
+      const { error } = await supabase
+        .from("remessas")
+        .update({ transportadora: nomeTransportadora })
+        .eq("id", remessaSelecionada.id);
+
       if (error) throw error;
 
       await registrarHistorico(remessaSelecionada.id, "transportadora_definida", `Transportadora definida: ${nomeTransportadora}`);
@@ -538,7 +571,11 @@ export default function AgendamentosPage() {
     setErrorMsg(null);
 
     try {
-      const { error } = await supabase.from("remessas").update({ tipo_carregamento: tipoCarregamento }).eq("id", remessaSelecionada.id);
+      const { error } = await supabase
+        .from("remessas")
+        .update({ tipo_carregamento: tipoCarregamento })
+        .eq("id", remessaSelecionada.id);
+
       if (error) throw error;
 
       await registrarHistorico(remessaSelecionada.id, "tipo_carregamento", `Tipo de carregamento definido como ${tipoCarregamento}`);
@@ -564,13 +601,22 @@ export default function AgendamentosPage() {
 
     try {
       const agora = new Date();
-      const { error } = await supabase.from("remessas").update({ etiqueta_criada: true, etiqueta_criada_em: agora }).eq("id", remessaSelecionada.id);
+
+      const { error } = await supabase
+        .from("remessas")
+        .update({ etiqueta_criada: true, etiqueta_criada_em: agora })
+        .eq("id", remessaSelecionada.id);
+
       if (error) throw error;
 
       await registrarHistorico(remessaSelecionada.id, "etiqueta_criada", "Etiqueta da nota/remessa foi criada.");
 
       await buscarRemessas();
-      setRemessaSelecionada({ ...remessaSelecionada, etiqueta_criada: true, etiqueta_criada_em: agora.toISOString() });
+      setRemessaSelecionada({
+        ...remessaSelecionada,
+        etiqueta_criada: true,
+        etiqueta_criada_em: agora.toISOString(),
+      });
 
       await carregarHistorico(remessaSelecionada.id);
       setPanelMode("idle");
@@ -590,13 +636,22 @@ export default function AgendamentosPage() {
 
     try {
       const agora = new Date();
-      const { error } = await supabase.from("remessas").update({ etiqueta_recebida: true, etiqueta_recebida_em: agora }).eq("id", remessaSelecionada.id);
+
+      const { error } = await supabase
+        .from("remessas")
+        .update({ etiqueta_recebida: true, etiqueta_recebida_em: agora })
+        .eq("id", remessaSelecionada.id);
+
       if (error) throw error;
 
       await registrarHistorico(remessaSelecionada.id, "etiqueta_recebida", "Etiqueta recebida e confirmada.");
 
       await buscarRemessas();
-      setRemessaSelecionada({ ...remessaSelecionada, etiqueta_recebida: true, etiqueta_recebida_em: agora.toISOString() });
+      setRemessaSelecionada({
+        ...remessaSelecionada,
+        etiqueta_recebida: true,
+        etiqueta_recebida_em: agora.toISOString(),
+      });
 
       await carregarHistorico(remessaSelecionada.id);
       setPanelMode("idle");
@@ -747,26 +802,51 @@ export default function AgendamentosPage() {
                   <td className="py-2">{r.cliente_nome}</td>
 
                   <td className="py-2 text-xs">
-                    {r.transportadora ? <span className="text-slate-200">{r.transportadora}</span> : <span className="text-red-300">PENDENTE</span>}
+                    {r.transportadora ? (
+                      <span className="text-slate-200">{r.transportadora}</span>
+                    ) : (
+                      <span className="text-red-300">PENDENTE</span>
+                    )}
                   </td>
 
-                  <td className="py-2 text-orange-300 text-xs uppercase">{r.status.replaceAll("_", " ")}</td>
+                  <td className="py-2 text-orange-300 text-xs uppercase">
+                    {r.status.replaceAll("_", " ")}
+                  </td>
 
-                  <td className="py-2">{r.data_criacao ? new Date(r.data_criacao).toLocaleString("pt-BR") : "-"}</td>
-
-                  <td className="py-2 text-xs">
-                    {r.data_entrega ? <span className="text-green-300">{safeDateLabel(r.data_entrega)}</span> : <span className="text-red-300">PENDENTE</span>}
+                  <td className="py-2">
+                    {r.data_criacao ? new Date(r.data_criacao).toLocaleString("pt-BR") : "-"}
                   </td>
 
                   <td className="py-2 text-xs">
-                    {r.data_carregamento ? <span className="text-green-300">{safeDateLabel(r.data_carregamento)}</span> : <span className="text-red-300">PENDENTE</span>}
+                    {r.data_entrega ? (
+                      <span className="text-green-300">{safeDateLabel(r.data_entrega)}</span>
+                    ) : (
+                      <span className="text-red-300">PENDENTE</span>
+                    )}
                   </td>
 
-                  <td className="py-2 text-xs">{r.etiqueta_criada ? <span className="text-green-400">SIM</span> : <span className="text-red-300">NÃO</span>}</td>
-                  <td className="py-2 text-xs">{r.etiqueta_recebida ? <span className="text-green-400">SIM</span> : <span className="text-red-300">NÃO</span>}</td>
+                  <td className="py-2 text-xs">
+                    {r.data_carregamento ? (
+                      <span className="text-green-300">{safeDateLabel(r.data_carregamento)}</span>
+                    ) : (
+                      <span className="text-red-300">PENDENTE</span>
+                    )}
+                  </td>
 
                   <td className="py-2 text-xs">
-                    {r.tipo_carregamento ? <span className="text-orange-300">{r.tipo_carregamento}</span> : <span className="text-red-300">PENDENTE</span>}
+                    {r.etiqueta_criada ? <span className="text-green-400">SIM</span> : <span className="text-red-300">NÃO</span>}
+                  </td>
+
+                  <td className="py-2 text-xs">
+                    {r.etiqueta_recebida ? <span className="text-green-400">SIM</span> : <span className="text-red-300">NÃO</span>}
+                  </td>
+
+                  <td className="py-2 text-xs">
+                    {r.tipo_carregamento ? (
+                      <span className="text-orange-300">{r.tipo_carregamento}</span>
+                    ) : (
+                      <span className="text-red-300">PENDENTE</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -777,7 +857,12 @@ export default function AgendamentosPage() {
         {/* ---------------- PAINEL ABAIXO ---------------- */}
         {remessaSelecionada && (
           <div ref={panelRef} className="mt-6 border border-orange-500/25 rounded-xl bg-[#05070d] p-5 relative">
-            <button onClick={fecharPainel} className="absolute right-4 top-4 text-slate-400 hover:text-orange-400" title="Fechar">
+            <button
+              onClick={fecharPainel}
+              className="absolute right-4 top-4 text-slate-400 hover:text-orange-400"
+              title="Fechar"
+              disabled={saving}
+            >
               <FiX size={20} />
             </button>
 
@@ -790,13 +875,16 @@ export default function AgendamentosPage() {
                   Nota: <span className="text-slate-200">{remessaSelecionada.numero_nota}</span> <br />
                   Cliente: <span className="text-slate-200">{remessaSelecionada.cliente_nome}</span> <br />
                   Transportadora:{" "}
-                  {remessaSelecionada.transportadora ? <span className="text-green-300">{remessaSelecionada.transportadora}</span> : <span className="text-red-300">não definida</span>}
+                  {remessaSelecionada.transportadora ? (
+                    <span className="text-green-300">{remessaSelecionada.transportadora}</span>
+                  ) : (
+                    <span className="text-red-300">não definida</span>
+                  )}
                 </p>
 
                 {errorMsg && <p className="text-sm text-red-400 mt-3">{errorMsg}</p>}
               </div>
 
-              {/* ✅ NOVO: botão editar */}
               <div className="shrink-0">
                 <button className="kx-btn" onClick={() => setPanelMode("editar_remessa")} disabled={saving}>
                   Editar Remessa
@@ -806,11 +894,19 @@ export default function AgendamentosPage() {
 
             {/* BOTÕES */}
             <div className="flex flex-wrap gap-2 mt-4">
-              <button className={actionBtnClass(!!pendencias?.hasEntrega, !pendencias?.hasEntrega)} onClick={() => setPanelMode("agendar_entrega")} disabled={saving}>
+              <button
+                className={actionBtnClass(!!pendencias?.hasEntrega, !pendencias?.hasEntrega)}
+                onClick={() => setPanelMode("agendar_entrega")}
+                disabled={saving}
+              >
                 Agendar Entrega
               </button>
 
-              <button className={actionBtnClass(!!pendencias?.hasCarregamento, !pendencias?.hasCarregamento)} onClick={() => setPanelMode("agendar_carregamento")} disabled={saving}>
+              <button
+                className={actionBtnClass(!!pendencias?.hasCarregamento, !pendencias?.hasCarregamento)}
+                onClick={() => setPanelMode("agendar_carregamento")}
+                disabled={saving}
+              >
                 Agendar Carregamento
               </button>
 
@@ -822,11 +918,19 @@ export default function AgendamentosPage() {
                 Refaturar
               </button>
 
-              <button className={actionBtnClass(!!pendencias?.hasTransportadora, !pendencias?.hasTransportadora)} onClick={() => setPanelMode("definir_transportadora")} disabled={saving}>
+              <button
+                className={actionBtnClass(!!pendencias?.hasTransportadora, !pendencias?.hasTransportadora)}
+                onClick={() => setPanelMode("definir_transportadora")}
+                disabled={saving}
+              >
                 Definir Transportadora
               </button>
 
-              <button className={actionBtnClass(!!pendencias?.hasTipoCarreg, !pendencias?.hasTipoCarreg)} onClick={() => setPanelMode("tipo_carregamento")} disabled={saving}>
+              <button
+                className={actionBtnClass(!!pendencias?.hasTipoCarreg, !pendencias?.hasTipoCarreg)}
+                onClick={() => setPanelMode("tipo_carregamento")}
+                disabled={saving}
+              >
                 Tipo de Carregamento
               </button>
 
@@ -867,11 +971,169 @@ export default function AgendamentosPage() {
               </button>
             </div>
 
-            {/* CONTEÚDO DA AÇÃO */}
+            {/* CONTEÚDO DA AÇÃO (AQUI ESTAVA FALTANDO) */}
             <div className="mt-5 space-y-4">
               {panelMode === "idle" && <p className="text-xs text-slate-400">Selecione uma ação acima.</p>}
 
-              {/* ✅ NOVO: EDITAR */}
+              {panelMode === "agendar_entrega" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <label className="text-xs text-slate-400">Data da entrega</label>
+                  <input
+                    type="datetime-local"
+                    className="kx-input"
+                    value={dataEntrega}
+                    onChange={(e) => setDataEntrega(e.target.value)}
+                  />
+
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleAgendarEntrega} disabled={saving || !dataEntrega}>
+                      {saving ? "Salvando..." : "Salvar Entrega"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "agendar_carregamento" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <label className="text-xs text-slate-400">Data do carregamento</label>
+                  <input
+                    type="datetime-local"
+                    className="kx-input"
+                    value={dataCarregamento}
+                    onChange={(e) => setDataCarregamento(e.target.value)}
+                  />
+
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleAgendarCarregamento} disabled={saving || !dataCarregamento}>
+                      {saving ? "Salvando..." : "Salvar Carregamento"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "marcar_carregada" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <p className="text-xs text-slate-300">
+                    Confirmar que a remessa foi carregada no CD e saiu para rota?
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleMarcarCarregada} disabled={saving}>
+                      {saving ? "Salvando..." : "Confirmar"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "cancelar" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <label className="text-xs text-slate-400">Motivo do cancelamento</label>
+                  <textarea
+                    className="kx-input"
+                    rows={3}
+                    value={motivoCancelamento}
+                    onChange={(e) => setMotivoCancelamento(e.target.value)}
+                  />
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      className="kx-btn-danger"
+                      onClick={handleCancelar}
+                      disabled={saving || !motivoCancelamento.trim()}
+                    >
+                      {saving ? "Salvando..." : "Confirmar Cancelamento"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "refaturar" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-slate-400">Nova Remessa</label>
+                      <input className="kx-input" value={novaRemessa} onChange={(e) => setNovaRemessa(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-slate-400">Nova Nota</label>
+                      <input className="kx-input" value={novaNota} onChange={(e) => setNovaNota(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleRefaturar} disabled={saving || !novaRemessa.trim() || !novaNota.trim()}>
+                      {saving ? "Salvando..." : "Confirmar Refaturamento"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "definir_transportadora" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <label className="text-xs text-slate-400">Transportadora</label>
+
+                  <select
+                    className="bg-[#0d1117] border border-orange-500/40 text-white rounded-md px-3 py-2 text-sm w-full"
+                    value={transportadoraSelecionadaId}
+                    onChange={(e) => setTransportadoraSelecionadaId(e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {listaTransportadoras.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleDefinirTransportadora} disabled={saving || !transportadoraSelecionadaId}>
+                      {saving ? "Salvando..." : "Salvar Transportadora"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panelMode === "tipo_carregamento" && (
+                <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
+                  <label className="text-xs text-slate-400">Tipo de carregamento</label>
+
+                  <select
+                    className="bg-[#0d1117] border border-orange-500/40 text-white rounded-md px-3 py-2 text-sm w-full"
+                    value={tipoCarregamento}
+                    onChange={(e) => setTipoCarregamento(e.target.value as any)}
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="PALETIZADA">PALETIZADA</option>
+                    <option value="BATIDA">BATIDA</option>
+                  </select>
+
+                  <div className="flex gap-2 mt-3">
+                    <button className="kx-btn" onClick={handleDefinirTipoCarregamento} disabled={saving || !tipoCarregamento}>
+                      {saving ? "Salvando..." : "Salvar Tipo"}
+                    </button>
+                    <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {panelMode === "editar_remessa" && (
                 <div className="border border-orange-500/15 rounded-lg p-4 bg-[#0b0f18]">
                   <p className="text-xs text-slate-400 mb-3">Edite os dados básicos da remessa:</p>
@@ -898,14 +1160,11 @@ export default function AgendamentosPage() {
                       {saving ? "Salvando..." : "Salvar Alterações"}
                     </button>
                     <button className="kx-btn" onClick={() => setPanelMode("idle")} disabled={saving}>
-                      Cancelar
+                      Voltar
                     </button>
                   </div>
                 </div>
               )}
-
-              {/* (mantém aqui os outros modos: agendar_entrega, agendar_carregamento etc.) */}
-              {/* Para não duplicar muito, você pode manter exatamente os blocos já existentes da sua versão anterior. */}
             </div>
 
             {/* HISTÓRICO */}
@@ -914,7 +1173,9 @@ export default function AgendamentosPage() {
             <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
               {historico.map((h) => (
                 <div key={h.id} className="text-xs text-slate-300 border-b border-orange-500/10 pb-2">
-                  <p className="text-orange-300 font-semibold">{new Date(h.criado_em).toLocaleString("pt-BR")}</p>
+                  <p className="text-orange-300 font-semibold">
+                    {new Date(h.criado_em).toLocaleString("pt-BR")}
+                  </p>
                   <p>{h.descricao}</p>
                   <p className="text-[10px] text-slate-500">Usuário: {h.usuario}</p>
                 </div>

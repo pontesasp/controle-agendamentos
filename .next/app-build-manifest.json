@@ -16,11 +16,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/agendamentos/page.js"
     ],
-    "/acompanhamento/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/acompanhamento/page.js"
-    ],
     "/calendario/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",

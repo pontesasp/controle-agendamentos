@@ -1,5 +1,4 @@
 {
-  "/calendario/page": "app/calendario/page.js",
   "/agendamentos/page": "app/agendamentos/page.js",
-  "/page": "app/page.js"
+  "/calendario/page": "app/calendario/page.js"
 }
